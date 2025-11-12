@@ -6,29 +6,36 @@ on:
       - main
 
 jobs:
-  deploy:
+  deploy-backend:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Backend Code
         uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: npm install
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Deploy backend to server
+      - name: Upload Backend Files
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
-            cd /home/simran/simran.project/backend &&
-            git pull &&
-            npm install &&
-            pm2 restart backend ||
+          ssh -o StrictHostKeyChecking=no simran@YOUR_SERVER_IP "rm -rf ~/backend/*"
+          scp -o StrictHostKeyChecking=no -r ./* simran@YOUR_SERVER_IP:~/backend/
+
+      - name: Restart PM2
+        run: |
+          ssh -o StrictHostKeyChecking=no simran@YOUR_SERVER_IP "
+            cd ~/backend &&
+            pm2 stop backend || true &&
             pm2 start server.js --name backend &&
             pm2 save
           "
-
-      - name: Backend Tests
-        run: npm test || echo 'No tests found'
-
